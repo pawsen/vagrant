@@ -1,0 +1,13 @@
+* video forwarding
+KVM and it's derivatives have a VNC server in its video subsystem. So you have to take a VNC client (any from widely availables), configure your KVM VM machine with a VNC connection (I usually do this by supplying a =--graphics vnc,port=5900,listen=0.0.0.0= option to the virt-install program) and use it to remotely install any operating system you want. 
+
+** macos
+Open port forwarding
+vagrant ssh  -- -L 5900:localhost:5900 -N -f
+
+brew cask install tigervnc-viewer
+
+https://johnsiu.com/blog/macos-kvm-remote-connect/
+brew tap jeffreywildman/homebrew-virt-manager
+brew install virt-manager virt-viewer libvirt
+

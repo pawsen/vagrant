@@ -1,0 +1,78 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+# vagrant reload --provision
+# Remember to run vagrant reload after making changes to this file
+# if vbox stops responding, then run
+# killall -9 VBoxHeadless && vagrant destroy
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "bento/ubuntu-20.04"
+  #config.vm.box = "ubuntu/focal64"
+  #config.vm.box_version = "0.0.1"
+  config.vm.synced_folder "../shared/", "/home/vagrant/shared"
+  config.vm.network :private_network, ip: "192.168.10.10"
+  #config.vm.network "forwarded_port", guest: "80", host: "8080"
+  config.vm.hostname = "ubuntu"
+   
+  config.vm.provision "shell" do |s|
+    s.inline = <<-SHELL
+      export DEBIAN_FRONTEND=noninteractive
+      apt-get update -y
+      apt-get upgrade -y
+      apt-get install -y git zsh
+      apt-get install -y emacs
+      apt-get install -y python3-pip
+      apt-get install -y ansible gdisk
+      # install apt-file, used for finding which package provide a given command
+      apt-get install -y apt-file mlocate
+      apt-file update
+      # Change the vagrant user's shell to use zsh
+      chsh -s $(which zsh) vagrant
+    SHELL
+  end
+
+  # change vagrant user settings
+  config.vm.provision :shell, privileged: false do |s|
+    s.inline = <<-SHELL
+      # Clone Oh My Zsh from the git repo
+      rm -rf ~/.oh-my-zsh
+      git clone --depth 1 git://github.com/robbyrussell/oh-my-zsh.git ~/.oh-my-zsh
+      # Copy in the default .zshrc config file
+      cp ~/.oh-my-zsh/templates/zshrc.zsh-template ~/.zshrc
+    SHELL
+  end
+  # copy local file to box
+  # config.vm.provision "file", source: "~/.zshrc", destination: ".zshrc"
+  # provision using shell script - file path relative to Vagrantfile
+  # config.vm.provision :shell, privileged: false, path: 'provision.sh'
+
+  config.vm.provider "virtualbox" do |vb|
+    vb.name = "ubuntu-focal"
+    # Disconnect serial console
+    vb.customize [ "modifyvm", :id, "--uart1", "off" ]
+    # Emulate more modern hardware, disable superfluous
+    vb.customize [ "modifyvm", :id, "--chipset", "ich9" ]
+    vb.customize [ "modifyvm", :id, "--paravirtprovider", "kvm" ]
+    vb.customize [ "modifyvm", :id, "--vram", "64" ]
+    vb.customize [ "modifyvm", :id, "--audio", "none" ]
+    # enable nested virtualization. Check with lsmod | grep kvm
+    vb.customize [ "modifyvm", :id, "--nested-hw-virt", "on" ]
+    vb.default_nic_type = "virtio"
+    vb.memory = 2048
+    vb.cpus = 2
+    
+    # Add IO Cache, Remove IDE Controller and add target disks
+    vb.customize [ 'storagectl', :id, '--name', 'SATA Controller', '--hostiocache', 'on' ]
+    # vb.customize [ 'storagectl', :id, '--name', 'IDE Controller', '--remove' ]
+  end
+
+  config.ssh.insert_key = true
+  config.vm.box_check_update = false
+
+  #Provision the box with Ansible
+  #config.vm.provision "ansible" do |ansible|
+  #   ansible.playbook="playbook.yaml"
+  #end
+end
+
